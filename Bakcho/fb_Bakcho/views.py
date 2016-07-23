@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 import json
 import requests
 import MySQLdb
+import re
 
 # Create your views here.
 class BakchoView(generic.View):
@@ -25,20 +26,22 @@ class BakchoView(generic.View):
 		counts = dict()
 		max = 0
 		maxTextID = 0
-		db = MySQLdb.connect("localhost", "root", "root", "hackday")
-		cursor = db.cursor()
 		for entry in incoming_message['entry']:
 			for message in entry['messaging']:
 				if 'message' in message:
 					tokens = message['message']['text'].split()
 					for t in tokens:
+						t = re.sub('[^A-Za-z0-9]+', '', t)
+						if t == 'I' or t == 'i' or t == 'the' or t == 'a' or t == 'an':
+							continue
+						db = MySQLdb.connect("localhost", "root", "root", "hackday")
+						cursor = db.cursor()
 						sql = "select textID from invertedIndex where keyword = '%s'" % t
 						try:
 							cursor.execute(sql)
 							results = cursor.fetchall()
 							for row in results:
 								textID = row[0]
-								print "textID %d" % textID
 								counts[textID] = counts.get(textID, 0) + 1
 								if(max < counts.get(textID, 0)):
 									max = counts.get(textID, 0)
@@ -46,6 +49,8 @@ class BakchoView(generic.View):
 						except:
 							print "Error1: unable to fetch data"
 
+					db = MySQLdb.connect("localhost", "root", "root", "hackday")
+					cursor = db.cursor()
 					sql = "select text from textDescription where textID = '%d'" % maxTextID
 					try:
 						cursor.execute(sql)
